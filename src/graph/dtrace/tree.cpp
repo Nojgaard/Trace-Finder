@@ -30,14 +30,23 @@ public:
 		compute_embedding();
 	}
 
-	bool is_full(vertex src, vertex tar) {
+	range<boost::graph_traits<graph_t>::adjacency_iterator> children() {
+		return as_range(adjacent_vertices(trace.back(),host_g));
+	}
+
+	const vector<vertex> & get_trace() {
+		return trace;
+	}
+
+	bool is_full(vertex tar) {
+		vertex src = trace.back();
 		auto p = boost::edge(src,tar,host_g);
 		assert(p.second);
 		edge e = p.first;
 		return (embedding[e] <= 0);
 	}
 
-	bool operator == (const embedded_trace &rhs) {
+	bool operator == (const embedded_trace &rhs) const {
 		using namespace morphism::vf2;
 		always_true_pred vp;
 		label_pred<edge,int> ep(embedding, rhs.embedding);
@@ -78,7 +87,58 @@ private:
 	const graph_t &host_g;
 };
 
-void traverse_bfs() {
+vertex min_vertex(const graph_t &g) {
+	vertex minv;
+	bool mindef = false;
+	for (auto v : as_range(vertices(g))) {
+		if (!mindef || minv > v) {
+			mindef = true;
+			minv = v;
+		}
+	}
+	return minv;
+}
+
+bool does_exist(const embedded_trace &t, 
+		const vector<embedded_trace> &tv) {
+	bool ex = false;
+	for (auto &ta : tv) {
+		if (t == ta) {
+			ex = true;
+			break;
+		}
+	}
+	return ex;
+}
+
+void traverse_bfs(const graph_t &g, vector<vertex> &out) {
+	assert(num_vertices(g) > 0);
+	vector<embedded_trace> curr_level,next_level;
+	int level = 0;
+	curr_level.push_back(embedded_trace(min_vertex(g),g));
+	int tar_level = full_trace_size(g);
+	int pruned = 0, invalid = 0;
+	size_t next = 0;
+	while (level < tar_level && next < curr_level.size()) {
+		embedded_trace &t = curr_level[next];
+		next++;
+		for (auto v : t.children()) {
+			if (t.is_full(v)) continue;
+
+			embedded_trace et(v, t.get_trace(), g);
+			bool exists = does_exist(et,next_level);
+			if (!exists) {
+				next_level.push_back(et);
+			} else {
+				pruned++;
+			}
+		}
+		if (next >= curr_level.size() && !next_level.empty()) {
+			swap(curr_level,next_level);
+			next_level.clear();
+			level++; pruned = 0; invalid = 0;
+		}
+	}
 }
 
 }//dtrace
