@@ -1,31 +1,25 @@
 #include <vector>
 #include "../base.hpp"
 #include "tree.hpp"
+#include <iostream>
 
 namespace graph {
 namespace dtrace {
 using namespace std;
 
 bool has_one_repetition(const vector<vertex> &trace, const graph_t &g) {
-	if (trace.size() <= 2) return true;
-	vertex i = trace.back();
-	vertex j = trace[trace.size()-2];
-	auto p = boost::edge(i,j,g);
-	assert(p.second);
-	edge e = p.first;
-	i = trace[trace.size()-3];
-	p = boost::edge(i,j,g);
-	assert(p.second);
-	edge e_adj = p.first;
-	if (e == e_adj) return false;
+	if (trace.size() <= 1) return true;
+	if (trace.back()== trace[trace.size()-3]) return false;
 	int current_size = trace.size();
 	if (full_trace_size(g)+1 == current_size){
-		p = boost::edge(trace[0],trace[1],g);
+		auto p = boost::edge(trace[0],trace[1],g);
 		assert(p.second);
 		edge e_first = p.first;
-		if (e == e_first) return false;
+		p = boost::edge(trace[current_size-2],trace.back(),g);
+		assert(p.second);
+		edge e_last = p.first;
+		if (e_last == e_first) return false;
 	}
-
 	return true;
 }
 

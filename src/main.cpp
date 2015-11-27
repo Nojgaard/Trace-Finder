@@ -2,6 +2,7 @@
 #include <boost/program_options.hpp>
 #include "graph/base.hpp"
 #include "graph/io.hpp"
+#include "graph/dtrace/find.hpp"
 #include <exception>
 
 using namespace std;
@@ -30,6 +31,8 @@ int main(int argc, char **argv) {
 		cout << e.what() << endl;
 		return 0;
 	}
+	vector<vertex> traces;
+	dtrace::find(g,traces);
 
 	return 0;
 }

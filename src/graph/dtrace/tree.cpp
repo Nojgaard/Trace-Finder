@@ -2,9 +2,11 @@
 #include <map>
 #include <cassert>
 #include <cmath>
+#include <iostream>
 #include "../base.hpp"
 #include "../morphism/vf2.hpp"
 #include "../../range.hpp"
+#include "rule.hpp"
 
 namespace graph {
 namespace dtrace {
@@ -34,7 +36,7 @@ public:
 		return as_range(adjacent_vertices(trace.back(),host_g));
 	}
 
-	const vector<vertex> & get_trace() {
+	const vector<vertex> & get_trace() const {
 		return trace;
 	}
 
@@ -43,7 +45,7 @@ public:
 		auto p = boost::edge(src,tar,host_g);
 		assert(p.second);
 		edge e = p.first;
-		return (embedding[e] <= 0);
+		return (embedding[e] > 0);
 	}
 
 	bool operator == (const embedded_trace &rhs) const {
@@ -51,6 +53,22 @@ public:
 		always_true_pred vp;
 		label_pred<edge,int> ep(embedding, rhs.embedding);
 		return (is_isomorphic(host_g,rhs.host_g,vp,ep));
+	}
+
+	void print() {
+		cout << "Trace: ";
+		for (size_t i = 0; i < trace.size(); i++) {
+			cout << trace[i] << " ";
+		}
+		cout << endl;
+		cout << "Embedding: ";
+		for (auto e : as_range(edges(host_g))) {
+			auto src = source(e,host_g);
+			auto tar = target(e,host_g);
+			cout << "|(" << src << ", " << tar << "): ";
+			cout << embedding[e] << " ";
+		}
+		cout << endl;
 	}
 
 private:
@@ -70,16 +88,19 @@ private:
 			int gap = (gap_f > gap_b)?gap_b:gap_f;
 			embedding[e] = gap;
 		}
+	//	cout << "CEmbedding: ";
 		for (auto e : as_range(edges(host_g))) {
 			if (embedding.find(e) == embedding.end()) {
 				embedding[e] = 0;
 			} else if (embedding[e] < 0) {
 				int df = embedding[e] * -1;
-				int db = trace.size()-df+1;
+				int db = trace.size()-df;
+	//			cout << "("<< df << " " << db << ")";
 				embedding[e] = (df < db)?df*-1:db*-1;
 				assert(embedding[e] < 0);
 			}
 		}
+	//	cout << endl;
 	}
 
 	vector<vertex> trace;
@@ -111,7 +132,26 @@ bool does_exist(const embedded_trace &t,
 	return ex;
 }
 
-void traverse_bfs(const graph_t &g, vector<vertex> &out) {
+bool is_valid(const embedded_trace &t, const ruleset &rules, const graph_t &g) {
+	for (auto r : rules) {
+		if (!r(t.get_trace(),g)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+void print_level_info(int level, const vector<embedded_trace> &nl,
+		int invalid, int pruned) {
+	cout << "------------------------" << endl;
+	cout << "Level       " << level << endl;
+	cout << "Found       " << nl.size() << " unique traces."<<endl;
+	cout << "Pruned      " << pruned << " traces." << endl;
+	cout << "Invalidated " << invalid << " traces." << endl;
+}
+
+void traverse_bfs(const graph_t &g, const ruleset &rules, 
+		vector<vertex> &out) {
 	assert(num_vertices(g) > 0);
 	vector<embedded_trace> curr_level,next_level;
 	int level = 0;
@@ -126,7 +166,16 @@ void traverse_bfs(const graph_t &g, vector<vertex> &out) {
 			if (t.is_full(v)) continue;
 
 			embedded_trace et(v, t.get_trace(), g);
-			bool exists = does_exist(et,next_level);
+			
+			bool valid = is_valid(et,rules,g);
+			if (!valid) {
+				invalid++;
+				continue;
+			}
+
+			//et.print();
+			bool exists = false;
+			exists = does_exist(et,next_level);
 			if (!exists) {
 				next_level.push_back(et);
 			} else {
@@ -134,11 +183,17 @@ void traverse_bfs(const graph_t &g, vector<vertex> &out) {
 			}
 		}
 		if (next >= curr_level.size() && !next_level.empty()) {
+			print_level_info(level, next_level,invalid,pruned);
 			swap(curr_level,next_level);
 			next_level.clear();
 			level++; pruned = 0; invalid = 0;
+			next = 0;
 		}
 	}
+	
+	cout << "--------------------\n";
+	cout << "Traversal complete!\n";
+	cout << "Found " << curr_level.size() << " traces.\n";
 }
 
 }//dtrace
