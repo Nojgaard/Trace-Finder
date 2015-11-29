@@ -44,8 +44,8 @@ template <typename graph, typename vpred, typename epred>
 bool is_isomorphic(
 		const graph &g_left,
 		const graph &g_right,
-		const vpred &vp,
-		const epred &ep) {
+		const vpred vp,
+		const epred ep) {
 	auto v_order_left = boost::vertex_order_by_mult(g_left);
 	bool iso;
 	iso_callback cb(iso);
