@@ -18,6 +18,17 @@ bool has_one_repetition(const trace &t) {
 	return true;
 }
 
+bool has_two_repetition(const trace &t) {
+	if (t.size() <= 2) return true;
+	edge e1 = t.back();
+	edge e2 = t[t.size()-2];
+	for (size_t i = 0; i < t.size()-2; i++) {
+		if (t[i] == e1 && t[i+1] == e2) return false;
+		if (t[i] == e2 && t[i+1] == e1) return false;
+	}
+	return true;
+}
+
 bool is_canon(const trace &t) {
 	if (t.size() == 0) return true;
 	if (t.tail_vertex() != t.head_vertex()) return true;

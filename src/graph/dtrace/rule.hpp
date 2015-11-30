@@ -9,6 +9,7 @@ namespace dtrace {
 typedef std::vector<bool (*)(const trace &)> ruleset;
 
 bool has_one_repetition(const trace &t);
+bool has_two_repetition(const trace &t);
 bool is_canon(const trace &t);
 
 }//dtrace
