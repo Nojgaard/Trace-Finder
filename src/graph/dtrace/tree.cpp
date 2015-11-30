@@ -9,107 +9,12 @@
 #include "../../range.hpp"
 #include "rule.hpp"
 #include "trace.hpp"
+#include "embedded_trace.hpp"
 
 namespace graph {
 namespace dtrace {
 
 using namespace std;
-
-
-int full_trace_size(const graph_t &g) {
-	return (2*num_edges(g));
-}
-
-struct embedded_trace {
-public:
-	embedded_trace(vertex v, const graph_t &g):t(v,g),host_g(g) {
-		compute_embedding();
-	}
-
-	embedded_trace(edge e, const trace &pt, 
-		const graph_t &g):t(pt),host_g(g) {
-		t.extend(e);
-		compute_embedding();
-	}
-
-	range<boost::graph_traits<graph_t>::out_edge_iterator> children() {
-		return as_range(out_edges(t.head_vertex(),host_g));
-	}
-
-	const trace & get_trace() const {
-		return t;
-	}
-
-	bool is_full(edge e) {
-		return (embedding[e] > 0);
-	}
-/*
-	void canonicalize() {
-		morphism::label_less<edge,int> el(embedding,embedding);
-		graph::morphism::canonizalise(host_g, el);
-	}
-*/
-	bool operator == (const embedded_trace &rhs) const {
-		using namespace morphism::vf2;
-		always_true_pred vp;
-		label_pred<edge,int> ep(embedding, rhs.embedding);
-		
-		return (is_isomorphic(host_g,rhs.host_g,vp,ep));
-	}
-
-	void print() {
-		cout << "Trace: ";
-		/*for (size_t i = 0; i < trace.size(); i++) {
-			cout << trace[i] << " ";
-		}*/
-		cout << endl;
-		cout << "Embedding: ";
-		for (auto e : as_range(edges(host_g))) {
-			auto src = source(e,host_g);
-			auto tar = target(e,host_g);
-			cout << "|(" << src << ", " << tar << "): ";
-			cout << embedding[e] << " ";
-		}
-		cout << endl;
-	}
-
-private:
-	void compute_embedding() {
-		for (size_t i = 0; i < t.size(); i++) {
-			edge e = t[i];
-			if (embedding.find(e) == embedding.end()) {
-				embedding[e] = (i+1)*-1;
-				assert(embedding[e] < 0);
-				continue;
-			}
-			assert(embedding[e] < 0);
-			int j = embedding[e] * -1;
-			int gap_f = (i+1)-j;
-			assert(gap_f > 0);
-			int gap_b = (t.tar_size()-(i+1))+j;
-			assert(gap_b > 0);
-			int gap = (gap_f > gap_b)?gap_b:gap_f;
-			embedding[e] = gap;
-		}
-	//	cout << "CEmbedding: ";
-		for (auto e : as_range(edges(host_g))) {
-			if (embedding.find(e) == embedding.end()) {
-				embedding[e] = 0;
-			} else if (embedding[e] < 0) {
-				int df = embedding[e] * -1;
-				int db = t.size()-(df-1);
-	//			cout << "("<< df << " " << db << ")";
-				embedding[e] = (df < db)?df*-1:db*-1;
-				assert(embedding[e] < 0);
-			}
-		}
-	//	cout << endl;
-	}
-
-	trace t;
-	map<edge, int> embedding;
-	const graph_t &host_g;
-};
 
 vertex min_vertex(const graph_t &g) {
 	vertex minv;
@@ -135,7 +40,7 @@ bool does_exist(const embedded_trace &t,
 	return ex;
 }
 
-bool is_valid(const embedded_trace &t, const ruleset &rules, const graph_t &g) {
+bool is_valid(const embedded_trace &t, const ruleset &rules) {
 	for (auto r : rules) {
 		if (!r(t.get_trace())) {
 			return false;
@@ -159,7 +64,7 @@ void traverse_bfs(const graph_t &g, const ruleset &rules,
 	vector<embedded_trace> curr_level,next_level;
 	int level = 0;
 	curr_level.push_back(embedded_trace(min_vertex(g),g));
-	int tar_level = full_trace_size(g);
+	int tar_level = curr_level[0].get_trace().tar_size();
 	int pruned = 0, invalid = 0;
 	size_t next = 0;
 	while (level < tar_level && next < curr_level.size()) {
@@ -170,7 +75,7 @@ void traverse_bfs(const graph_t &g, const ruleset &rules,
 
 			embedded_trace et(e, t.get_trace(), g);
 			
-			bool valid = is_valid(et,rules,g);
+			bool valid = is_valid(et,rules);
 			if (!valid) {
 				invalid++;
 				continue;

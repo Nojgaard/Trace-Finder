@@ -34,9 +34,13 @@ private:
 	const std::map<ve,ltype> &pl,&pr;
 };
 
+
 template<typename eless>
 void canonizalise(const graph_t &g, eless el) {
 	using namespace graph_canonicalization;
+	
+	typedef boost::iterator_property_map<__gnu_cxx::__normal_iterator<const unsigned int*, std::vector<unsigned int> >, boost::vec_adj_list_vertex_id_map<boost::no_property, unsigned int>, unsigned int, const unsigned int&> idx_map_t;
+	
 	canonicalizer<std::size_t, 
 		edge_invariant_all_equal<std::size_t>,
 		traversal_bfsExpS,
@@ -47,7 +51,7 @@ void canonizalise(const graph_t &g, eless el) {
 			,vless,visitor);
 	auto idx_map = boost::make_iterator_property_map(idx.cbegin()
 			, get(boost::vertex_index_t(), g));
-	boost::ordered_graph<graph_t, decltype(idx_map)> canon_graph(g,idx_map,always_false());
+	boost::ordered_graph<graph_t, idx_map_t> canon_graph(g,idx_map,always_false());
 
 
 }
