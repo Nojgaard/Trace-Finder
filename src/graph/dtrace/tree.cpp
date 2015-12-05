@@ -80,7 +80,7 @@ void traverse_bfs(const graph_t &g, const ruleset &rules,
 				invalid++;
 				continue;
 			}
-
+			et.canonicalize();
 			//et.print();
 			bool exists = false;
 			exists = does_exist(et,next_level);

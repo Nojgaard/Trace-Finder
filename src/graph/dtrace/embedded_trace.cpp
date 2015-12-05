@@ -9,6 +9,11 @@ using namespace std;
 namespace graph  {
 namespace dtrace {
 
+/*embedded_trace::embedded_trace(const embedded_trace &et) 
+	: t(et.t),embedding(et.embedding),host_g(et.host_g){
+	canon_graph = std::move(et.canon_graph);
+}*/
+
 embedded_trace::embedded_trace(vertex v, const graph_t &g)
 	:t(v,g),host_g(g) {
 	compute_embedding();
@@ -33,16 +38,21 @@ bool embedded_trace::is_full(edge e) const {
 }
 
 void embedded_trace::canonicalize() {
-	morphism::label_less<edge,int> el(embedding,embedding);
-	graph::morphism::canonizalise(host_g, el);
+	using namespace morphism::canon;
+	label_less<edge,int> el(embedding);
+	vertex_less_edge_pred<int> vl(embedding,host_g);
+	canon_graph = morphism::canon::canonicalize(host_g, vl, el);
 }
 
 bool embedded_trace::operator == (const embedded_trace &rhs) const {
-	using namespace morphism::vf2;
+	using namespace morphism::canon;
+	label_equal<edge,int> eeq(embedding,rhs.embedding);
+	return canon_graph->is_equal(*rhs.canon_graph,eeq);
+	/*using namespace morphism::vf2;
 	always_true_pred vp;
 	label_pred<edge,int> ep(embedding, rhs.embedding);
 	
-	return (is_isomorphic(host_g,rhs.host_g,vp,ep));
+	return (is_isomorphic(host_g,rhs.host_g,vp,ep));*/
 }
 
 void embedded_trace::print() const {
